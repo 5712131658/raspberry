@@ -42,3 +42,80 @@ while True:
         break
 picam2.stop()
 cv2.destroyAllWindows()
+
+from tensorflow.keras.models import load_model  # TensorFlow is required for Keras to work
+import cv2  # Install opencv-python
+import numpy
+import time
+# Disable scientific notation for clarity
+from picamera2 import Picamera2
+from datetime import datetime
+from libcamera import Transform
+from gpiozero import LED,AngularServo
+from time import sleep
+from buildhat import Motor
+moto = Motor('A')
+picam2 = Picamera2()
+camera_config = picam2.creat_still_configuration(main={'size':(1920,1080)},transform = Transform(vflip = True,hflip = True))
+picam2.configure(camera_config)
+picam2.start()
+numpy.set_printoptions(suppress=True)
+# Load the model
+model = load_model("keras_Model.h5", compile=False)
+# Load the labels
+class_names = open("labels.txt", "r").readlines()
+LED_PIN = LED(17)
+servo = AngularServo(18, min_pulse_width=0.0006, max_pulse_width=0.0023)
+# CAMERA can be 0 or 1 based on default camera of your computer
+while True:
+    # Grab the webcamera's image.
+    ret, image = picam2.capture_array()
+    # Resize the raw image into (224-height,224-width) pixels
+    image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
+    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    # Show the image in a window
+    cv2.imshow("Webcam Image", image)
+    # Make the image a numpy array and reshape it to the models input shape.
+    image = numpy.asarray(image, dtype=numpy.float32).reshape(1, 224, 224, 3)
+    # Normalize the image array
+    image = (image / 127.5) - 1
+    # Predicts the model
+    prediction = model.predict(image)
+    index = numpy.argmax(prediction)
+    class_name = class_names[index]
+    confidence_score = prediction[0][index]
+    # Print prediction and confidence score
+    print(confidence_score)
+    print("Class:", class_name[2:], end="")
+    print("Confidence Score:", str(numpy.round(confidence_score * 100))[:-2], "%")
+    if class_names==class_name[0]:
+        print(class_names[0])
+        while True:
+            LED_PIN.on()  # Turn on the LED
+            time.sleep(1)  # Wait for 1 second
+            LED_PIN.off()  # Turn off the LED
+            time.sleep(1)  # Wait for 1 second
+    if class_names==class_name[1]:
+        print(class_names[1])
+        while True:
+            # Set the servo angle to 90 degrees
+            servo.angle = 90
+            sleep(1)  # Delay for 1 second
+            # Set the servo angle to 0 degrees
+            servo.angle = 0
+            sleep(1)  # Delay for 1 second
+            # Set the servo angle to -90 degrees
+            servo.angle = -90
+            sleep(1)  # Delay for 1 second
+    servo.angle = 0
+    if class_names==class_name[2]:
+        print(class_names[2])
+        moto.run_for_second(5,speed=-50)
+    moto.stop()
+    # Listen to the keyboard for presses.
+    keyboard_input = cv2.waitKey(1)
+    # 27 is the ASCII for the esc key on your keyboard.
+    if keyboard_input == ord('q'):
+        break
+picam2.stop()
+cv2.destroyAllWindows()
