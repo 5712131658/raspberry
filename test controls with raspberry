@@ -1,0 +1,156 @@
+from gpiozero import LED, Button
+import time
+import threading
+def listen_for_keypress():
+    print("Press Me Again!")
+    button.wait_for_press()
+button = Button(2)
+led = LED(23)
+print("Press Me!")
+button.wait_for_press()
+sleep(1)
+keypress_thread = threading.Thread(target=listen_for_keypress)
+keypress_thread.start()
+while keypress_thread.is_alive():
+    led.on()
+    time.sleep(3)
+print("Powering Down!")
+led.off()
+from gpiozero import LED
+import time
+from tqdm import tqdm
+led = LED(23)
+led.off()
+start_time = time.time()
+duration = 10
+with tqdm(total=duration, dynamic_ncols=True) as pbar:
+    while time.time()-start_time < duration:
+        led.on()
+        time.sleep(1)
+        led.off()
+        time.sleep(1)
+        elapsed_time = time.time() - start_time
+        pbar.update(min(elapsed_time - pbar.n, duration - pbar.n))
+print("Program Ended.")
+led.off()
+"""Example for distance sensor"""
+from signal import pause
+import time
+from buildhat import DistanceSensor, Motor
+motor = Motor('A')
+dist = DistanceSensor('D', threshold_distance=70)
+motor.set_default_speed(-25)
+print("Start motor")
+motor.start()
+def handle_in(distance):
+    """Within range
+    :param distance: Distance
+    """
+    motor.stop()
+    print("in range", distance)
+def handle_out(distance):
+    """Out of range
+    :param distance: Distance
+    """
+    motor.start()
+    print("out of range", distance)
+dist.when_in_range = handle_in
+dist.when_out_of_range = handle_out
+try:
+    pause()  # This will keep the program running
+except KeyboardInterrupt:
+    print("Stopping motor and exiting...")
+    motor.stop()  # Stop the motor when exiting
+from keras.models import load_model
+import numpy
+import cv2 
+from picamera2 import Picamera2
+from libcamera import Transform
+import time
+numpy.set_printoptions(suppress=True)
+model = load_model("keras_modelv3.h5", compile=False)
+class_names = open("labelsv3.txt", "r").readlines()
+picam2 = Picamera2()
+camera_config = picam2.create_still_configuration(main={"size": (1640,1232)},transform=Transform(vflip=True,hflip=True))
+picam2.configure(camera_config)
+picam2.start()
+capture_time = None
+while True:
+    frame = picam2.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('c'):
+        image = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
+        image = numpy.asarray(image, dtype=numpy.float32).reshape(1, 224, 224, 3)
+        image = (image / 127.5) - 1
+        prediction = model.predict(image)
+        index = numpy.argmax(prediction)
+        class_name = class_names[index]
+        confidence_score = prediction[0][index]
+        result = class_name[2:-1]
+        print(result)
+        capture_time = time.time()
+    elif key == ord('q'):
+        break
+    if capture_time is not None and time.time() - capture_time < 1:
+        cv2.putText(frame, result, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3, cv2.LINE_AA)
+    cv2.imshow("Video Stream", frame)     
+picam2.stop()
+cv2.destroyAllWindows()
+from buildhat import Motor
+motor_a = Motor('A')
+motor_a.run_for_seconds(5)
+from gpiozero import LED
+from time import sleep
+from gpiozero import Button
+button = Button(2)
+led = LED(23)
+button.wait_for_press()
+print("You pushed me!")
+print("Lighting Up!")
+led.on()
+sleep(3)
+led.off()
+from gpiozero import AngularServo
+import time
+# Create an AngularServo object with the specified GPIO pin,
+# minimum pulse width, and maximum pulse width
+servo = AngularServo(18, min_pulse_width=0.0006, max_pulse_width=0.0023)
+servo.angle = 0
+servo.angle = 80
+time.sleep(2)
+servo.angle = 0
+time.sleep(2)
+servo.angle = -80
+time.sleep(2)
+servo.angle = 0
+time.sleep(2)
+servo.value = None
+print('Servo testing completed')
+import cv2
+from picamera2 import Picamera2
+from datetime import datetime
+from libcamera import Transform
+import time
+picam2 = Picamera2()
+camera_config = picam2.create_still_configuration(main={"size": (1640,1232)},transform=Transform(vflip=True,hflip=True))
+picam2.configure(camera_config)
+picam2.start()
+capture_time = None
+while True:
+    frame = picam2.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):
+        break
+    elif key == ord('c'):
+        filename = datetime.now().strftime("image_%Y%m%d_%H%M%S.png")
+        cv2.imwrite(filename, frame)
+        text = f"Captured {filename}"
+        print(text)
+        capture_time = time.time()
+    if capture_time is not None and time.time() - capture_time < 0.5:  
+        cv2.putText(frame, f"Captured {filename}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3, cv2.LINE_AA)
+    cv2.imshow("Video Stream", frame)
+picam2.stop()
+cv2.destroyAllWindows()
