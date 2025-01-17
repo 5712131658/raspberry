@@ -1,0 +1,3 @@
+sudo date --set="YYYY-MM-DD HH:MM:SS"
+timedatectl status
+sudo timedatectl set-ntp true
