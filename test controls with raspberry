@@ -154,3 +154,20 @@ while True:
     cv2.imshow("Video Stream", frame)
 picam2.stop()
 cv2.destroyAllWindows()
+import pyttsx3;engine = pyttsx3.init()
+engine.say('hello world')
+engine.runAndWait()
+print('speech finished')
+defaultrate = engine.getProperty('rate')
+print('default speechh rate is : ',defaultrate)
+engine.setProperty('rate',100)
+engine.setProperty('volume',5)
+engine.say('hello world i m speaking louder and slower')
+engine.runAndWait()
+responses = {"hello":"hello world","bye":"goodbye world"}
+userinput = input('type a command : ').lower()
+if userinput in responses:
+    engine.say(responses[userinput])
+else:
+    engine.say('i do not understand that command')
+engine.runAndWait()
